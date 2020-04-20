@@ -1,0 +1,232 @@
+---
+title: "Project"
+subtitle: "Statistics 98"
+author: "Mehrsa Pourya (95101247)"
+date: "`r Sys.time()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+<div align="center">
+<img  src="images/im01.jpg"  align = 'center'>
+</div>
+
+<h1 dir="RTL"> 
+تمرین برنامه نویسی: بررسی آلودگی هوای آمریکا
+</h1>
+
+> <p dir="RTL"> 
+با استفاده از داده های آلودگی هوای آمریکا در سال ۲۰۱۸ به سوالات زیر پاسخ دهید.
+برای تصویرسازی از پکیج ggplot2 استفاده کنید.
+</p>
+
+```{r}
+# import data 
+library(readr)
+data = read.csv("daily_aqi_by_county_2018.csv")
+head(data)
+```
+***
+
+<p dir="RTL">
+۱. آلوده ترین منطقه، چه منطقه ای بوده است؟ نمودار ستونی ۲۰ منطقه با بیشترین آلودگی را رسم کنید.
+این کار را برای ایالت ها نیز تکرار کنید.
+
+همانگونه که در ادامه مشاهده میشود منطقه هاوایی بر اساس میانگین آلوده ترین منطقه است. نمودار خواسته شده نیز در زیر آمده است. 
+برای ایالت ها نیز همانگونه که در ادامه مشاهده میشود کالیفرنیا آلوده ترین ایالت است و نمودار خواسته شده برای آن نیز در ادامه آمده است.
+</p>
+
+***
+```{r}
+library(dplyr)
+library(ggplot2)
+sorted_avgAQI_cn = data %>% group_by(county.Name) %>% summarise(avgAQI = mean(AQI)) %>% arrange(desc(avgAQI))
+head(sorted_avgAQI_cn)
+top20 = head(sorted_avgAQI_cn,20)
+top20$county.Name <- factor(top20$county.Name, levels = top20$county.Name)
+g <- ggplot(top20, aes(top20$county.Name, avgAQI))
+g + geom_bar(stat = "identity") +  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+sorted_avgAQI_st = data %>% group_by(State.Name) %>% summarise(avgAQI = mean(AQI)) %>% arrange(desc(avgAQI))
+head(sorted_avgAQI_st)
+top20 = head(sorted_avgAQI_st,20)
+top20$State.Name <- factor(top20$State.Name, levels = top20$State.Name)
+g <- ggplot(top20, aes(top20$State.Name, avgAQI))
+g + geom_bar(stat = "identity") +  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+```
+<p dir="RTL">
+۲. نمودار جعبه ای آلودگی هوا را بر حسب درجه کیفی آلودگی هوا(Category) رسم کنید.
+نمودار خواسته شده رسم شده است؛ همانگونه که مشاهده میشود نمودار با اطلاعات پیشین درباره تناظر شاخص و کیفیت کیفی برقرار است.
+</p>
+
+***
+```{r}
+g <- ggplot(data, aes(data$Category, data$AQI))
+g + geom_boxplot() + theme(text = element_text(size=8)) 
+
+```
+<p dir="RTL">
+۳. نمودار خطی میانگین آلودگی هوای امریکا را بر حسب زمان رسم کنید.
+نمودار رسم شده است. 
+</p>
+
+***
+```{r}
+data_gp = data %>% group_by(data$Date) %>%  summarise(avgAQI = mean(AQI))
+data_gp$`data$Date` <- as.numeric(data_gp$`data$Date`)
+g <- ggplot(data_gp, aes(data_gp$`data$Date`, data_gp$avgAQI), group = 1)
+g + geom_point() + geom_line() 
+```
+
+<p dir="RTL">
+۴. نمودار ستونی مهمترین آلاینده های هوای واشنگتن را رسم کنید و بگویید که مهم ترین آلاینده هوای واشنگتن چه آلاینده ای است.
+
+در ادامه برای پاسخ به این سوال دو نمودار رسم میکنیم؛ اولی فراوانی گزارش هرکدام از آلاینده ها که اگر اهمیت را بر حسب فراوانی گزارش بگیریم پی ام 2.5 مهم ترین آلاینده است و نمودار بعدی میانگین شاخص کیفیت در هر کدام از دسته های نوع آلاینده است که اگر اینگونه به اهمیت بنگریم گوگرد دی اکسید مهم ترین است.
+</p>
+
+***
+```{r}
+washington_data = data %>% filter(State.Name == 'Washington')
+g <- ggplot(washington_data, aes(washington_data$Defining.Parameter))
+g + geom_bar()
+gbyDF = washington_data %>% group_by(Defining.Parameter) %>% summarise(avgAQI = mean(AQI))
+f <- ggplot(gbyDF, aes(gbyDF$Defining.Parameter, avgAQI))
+f + geom_bar(stat = "identity")
+```
+<p dir="RTL">
+۵. میخواهیم بازه اطمینانی نود و پنج درصدی برای میانگین آلودگی هوای هر منطقه به دست بیاوریم.
+یک dataframe جدید بسازید که در آن مقابل اسم هر منطقه، ابتدا و انتهای بازه اطمینان در دو ستون مختلف نوشته شده باشد.
+
+با استفاده از تعاریف درس بازه اطمینان به صورت زیر محاسبه شد.
+</p>
+
+***
+```{r}
+CI_by_coName = data %>% group_by(county.Name) %>% summarise(low = mean(AQI) - qt(97.5/100, n() - 1) * sd(AQI) / sqrt(n()), up = mean(AQI) + qt(97.5/100, n() - 1) * sd(AQI) / sqrt(n()))
+head(CI_by_coName)
+```
+<p dir="RTL">
+۶. با طراحی آزمون فرض، این ادعا را بررسی کنید:
+<br>
+«در زمستان، هوا از تابستان آلوده تر است.»
+آزمون فرض یک طرفه با فرض صفر آلوده تر بودن هوای زمستان و معادلا فرض یک (ورودی تابع آماده) تمیز تر بودن زمستان
+برای هر دو حالت برابری و نابرابری واریانس دو جامعه پیاده سازی و تست شد در هر حالت پی  ولیو کم بود و بنابر این فرض صفر رد میشود پس میتوانین بگوییم هوای زمستان آلوده تر نیست.
+</p>
+
+```{r}
+data$DateNum = as.numeric(data$Date)
+winterData = data %>% filter(DateNum < 81 | DateNum > 355) 
+summerData = data %>% filter(DateNum > 171 & DateNum < 264)
+swData = data %>% filter((DateNum > 171 & DateNum < 264) | DateNum < 81 | DateNum > 355)
+n1 = dim(winterData)[1]
+n2 = dim(summerData)[1]
+v1 = n1 - 1
+v2 = n2 - 1
+s1 = sd(winterData$AQI)
+s2 = sd(summerData$AQI)
+stot = sd(swData$AQI)
+# equal variance assumption
+t_eq = (mean(winterData$AQI) - mean(summerData$AQI)) / (stot / sqrt(n1 + n2 - 2))
+ttest_pval = 1 - pt(-t_eq, n1 + n2 - 2)
+ttest_pval 
+t.test(winterData$AQI, summerData$AQI, alternative="less", var.equal=TRUE)
+# unequal variance assumption
+t_neq = (mean(winterData$AQI) - mean(summerData$AQI)) / sqrt((s1^2/n1 + s2^2/n2))
+v = ceiling((s1^2/n1+s2^2/n2)^2/(s1^4/(n1^2*v1) + s2^4/(n2^2*v2)))
+welch_pval = 1 - pt(-t_eq,v)
+welch_pval
+t.test(winterData$AQI, summerData$AQI, alternative="less", var.equal=FALSE)
+
+```
+
+***
+<p dir="RTL">
+۷. با طراحی آزمون فرض، این ادعا را بررسی کنید:
+<br>
+«آلودگی هوای زمستان و تابستان با هم تفاوت دارد.»
+<br>
+نتیجه این آزمون را با بخش قبل مقایسه کنید.
+
+آزمون فرض با فرض صفر برابری را انجام میدهیم که پی ولیو خروجی تحت هر فرضی نزدیک به صفر شد و میتوانیم بگوییم که فرض صفر رد و فرض تفاوت پذیرفته میشود. 
+
+مقایسه با حالت قبل : در قسمت قبل آزمون فرض یک طرفه بود و فرض الوده تر بودن زمستان برقرار نبود اما در اینجا ازمون فرض دو طرفه است و فرض تفاوت برقرار است؛ در قبلی نیز فرض تمیز تر بودن تابستان برقرار است.
+</p>
+```{r}
+# equal variance assumption
+t_eq = (mean(winterData$AQI) - mean(summerData$AQI)) / (stot / sqrt(n1 + n2 - 2))
+ttest_pval = 2 * pt(t_eq, n1 + n2 - 2)
+ttest_pval 
+t.test(winterData$AQI, summerData$AQI, alternative="two.sided", var.equal=TRUE)
+# unequal variance assumption
+t_neq = (mean(winterData$AQI) - mean(summerData$AQI)) / sqrt((s1^2/n1 + s2^2/n2))
+v = ceiling((s1^2/n1+s2^2/n2)^2/(s1^4/(n1^2*v1) + s2^4/(n2^2*v2)))
+welch_pval = 2 * pt(t_eq,v)
+welch_pval
+t.test(winterData$AQI, summerData$AQI, alternative="two.sided", var.equal=FALSE)
+```
+***
+
+
+<p dir="RTL">
+۸. با طراحی آزمون فرض، این ادعا را بررسی کنید:
+<br>
+«آلودگی هوای تگزاس و میشیگان، تفاوت  با هم ندارد.»
+
+مشابه بخش قبل آزمون فرض با فرض صفر عدم تفاوت انجام شد و با توجه به خروجی فرض صفر رد شد. و بنابراین این دو با هم تفاوت دارند.
+</p>
+
+```{r}
+texas = data %>% filter(data$State.Name == "Texas")
+michigan = data %>% filter(data$State.Name == "Michigan")
+t.test(texas$AQI, michigan$AQI, alternative = "two.sided")
+t.test(texas$AQI, michigan$AQI, alternative = "two.sided", var.equal = TRUE)
+```
+***
+<p dir="RTL">
+۹. با استفاده از تحلیل واریانس و محاسبه آماره ی F و p-value فرضیه زیر را بررسی کنید.
+<br>
+«آلودگی هوای سه ایالت کالیفرنیا، نیویورک و آلاباما تفاوت معناداری ندارد.»
+
+با توجه به پی مقدار خروجی فرض برابری رد و این سه با هم تفاوت معنادار دارند.
+</p>
+
+***
+```{r}
+newdat <- data %>% filter(State.Name == c("California", "New York", "Alabama"))
+aov_model = aov(newdat$AQI ~ newdat$State.Name)
+summary(aov_model)
+```
+<p dir="RTL">
+۱۰. سه آماره به همراه نمودار جالب استخراج کنید.
+
+سه کار انجام شده به این شرح اند : 
+واریانس آلودگی بر اساس ایالت رسم شده است تا مشخص شود چه ایالاتی بیشترین تغییرات را دارند که نتیجه میشود ایالت هاوایی بیشترین تغییرات را دارد. 
+2 . توزیع شاخص هم در کل داده ها و هم در کالیفرنیا که الوده ترین ایالت بود رسم شده که نشان میدهد دم توزیع در کالیفرنیا که الوده ترین است احتمال بیشتری دارد. 
+3. نمودار شاخص ایالات بر حسب زمان رسم شده که باز نشان میدهد در ماهای وسط تقریبا در همه جا هوا الوده تر است.
+</p>
+
+***
+```{r}
+sorted_varAQI_cn = data %>% group_by(State.Name) %>% summarise(varAQI = var(AQI)) %>% arrange(desc(varAQI))
+top20 = head(sorted_varAQI_cn,20)
+top20$State.Name <- factor(top20$State.Name, levels = top20$State.Name)
+g <- ggplot(top20, aes(top20$State.Name, varAQI))
+g + geom_bar(stat = "identity") +  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+```
+```{r}
+g <- ggplot(data, aes(data$AQI))
+g + geom_density()
+caldata = data %>% filter(State.Name == "California")
+g <- ggplot(caldata, aes(caldata$AQI))
+g + geom_density()
+```
+
+
+```{r}
+fdata <- data %>% filter(data$AQI < 200) 
+m <- ggplot(fdata, aes(fdata$Date, fdata$State.Name))
+m + geom_raster(aes(fill = fdata$AQI), hjust=0.5,
+vjust=0.5, interpolate=FALSE) +  scale_fill_gradientn(colours = terrain.colors(10)) + theme(text = element_text(size=7))
+
+```
